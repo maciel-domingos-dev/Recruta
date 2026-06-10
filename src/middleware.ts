@@ -1,34 +1,31 @@
+import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = [
-  '/login',
-  '/candidatar',
-  '/api/auth/set-cookie',
-  '/api/auth/logout',
-  '/api/dev-login',
-]
+const PUBLIC_PATHS = ['/login', '/candidatar']
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+  const res = NextResponse.next()
 
-  // Rotas sempre públicas — passa sem verificar autenticação
-  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
-    return NextResponse.next()
+  // Rotas públicas e raiz — passa sem verificar sessão
+  if (
+    pathname === '/' ||
+    pathname.startsWith('/api/') ||
+    PUBLIC_PATHS.some(p => pathname.startsWith(p))
+  ) {
+    return res
   }
 
-  // Rota raiz → deixa o server component fazer o redirect para /login
-  if (pathname === '/') {
-    return NextResponse.next()
-  }
+  // Verifica sessão via Supabase Auth (lê/atualiza cookies automaticamente)
+  const supabase = createMiddlewareClient({ req: request, res })
+  const { data: { session } } = await supabase.auth.getSession()
 
-  // Rotas protegidas — exige cookie de sessão
-  const token = request.cookies.get('sb-access-token')?.value
-  if (!token) {
+  if (!session) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return NextResponse.next()
+  return res
 }
 
 export const config = {

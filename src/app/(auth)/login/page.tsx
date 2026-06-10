@@ -3,41 +3,47 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Loader2, Users, Brain, BarChart3, CheckCircle } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 const features = [
-  { icon: Users, text: 'Gestão completa de candidatos' },
-  { icon: Brain, text: 'Análise de currículos com IA' },
-  { icon: BarChart3, text: 'Relatórios e ranking em tempo real' },
+  { icon: Users,       text: 'Gestão completa de candidatos' },
+  { icon: Brain,       text: 'Análise de currículos com IA' },
+  { icon: BarChart3,   text: 'Relatórios e ranking em tempo real' },
   { icon: CheckCircle, text: 'Pipeline visual de seleção' },
 ]
 
 export default function LoginPage() {
   const router = useRouter()
-  const [email, setEmail] = useState('')
+  const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [loading,  setLoading]  = useState(false)
+  const [error,    setError]    = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const res = await fetch('/api/dev-login', {
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+
+    if (authError || !data.session) {
+      setError('E-mail ou senha incorretos.')
+      setLoading(false)
+      return
+    }
+
+    await fetch('/api/auth/set-cookie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({
+        access_token:  data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      }),
     })
 
-    if (res.ok) {
-      router.push('/dashboard')
-      router.refresh()
-    } else {
-      const data = await res.json()
-      setError(data.error ?? 'E-mail ou senha incorretos.')
-      setLoading(false)
-    }
+    router.push('/dashboard')
+    router.refresh()
   }
 
   return (
@@ -49,7 +55,7 @@ export default function LoginPage() {
       >
         <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full opacity-10 bg-white" />
         <div className="absolute bottom-10 -left-16 w-56 h-56 rounded-full opacity-10 bg-white" />
-        <div className="absolute top-1/2 right-0 w-32 h-32 rounded-full opacity-5 bg-white" />
+        <div className="absolute top-1/2 right-0  w-32 h-32 rounded-full opacity-5  bg-white" />
 
         {/* Logo */}
         <div className="relative z-10">
@@ -84,7 +90,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10">
-          <p className="text-blue-300 text-sm">© 2024 Recruta. Todos os direitos reservados.</p>
+          <p className="text-blue-300 text-sm">© 2026 ATS Recruta. Todos os direitos reservados.</p>
         </div>
       </div>
 
@@ -115,7 +121,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
-                placeholder="admin@recruta.com"
+                placeholder="seu@email.com"
                 required
                 className="input"
               />
@@ -169,14 +175,6 @@ export default function LoginPage() {
               )}
             </button>
           </form>
-
-          {/* Dica dev */}
-          <div className="mt-6 p-3 bg-blue-50 border border-blue-100 rounded-lg">
-            <p className="text-xs text-blue-600 font-medium mb-0.5">Acesso de desenvolvimento</p>
-            <p className="text-xs text-blue-500">
-              E-mail: <strong>admin@recruta.com</strong> · Senha: <strong>recruta123</strong>
-            </p>
-          </div>
 
           <p className="text-center text-xs text-gray-400 mt-6">
             Não tem uma conta?{' '}

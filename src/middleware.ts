@@ -1,26 +1,29 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const PUBLIC_PATHS = [
+  '/login',
+  '/candidatar',
+  '/api/auth/set-cookie',
+  '/api/auth/logout',
+  '/api/dev-login',
+]
+
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Rotas sempre públicas — passa sem verificar autenticação
+  if (PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+    return NextResponse.next()
+  }
+
+  // Rota raiz → deixa o server component fazer o redirect para /login
+  if (pathname === '/') {
+    return NextResponse.next()
+  }
+
+  // Rotas protegidas — exige cookie de sessão
   const token = request.cookies.get('sb-access-token')?.value
-
-  // Usuário autenticado acessando páginas públicas → redireciona para dashboard
-  if (token && (pathname === '/' || pathname.startsWith('/login'))) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  // Rotas de API são sempre públicas
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.next()
-  }
-
-  // Página pública de candidatura
-  if (pathname.startsWith('/candidatar')) {
-    return NextResponse.next()
-  }
-
-  // Demais rotas exigem autenticação
   if (!token) {
     return NextResponse.redirect(new URL('/login', request.url))
   }

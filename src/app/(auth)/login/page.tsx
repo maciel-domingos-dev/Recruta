@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Loader2, Users, Brain, BarChart3, CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -13,7 +12,6 @@ const features = [
 ]
 
 export default function LoginPage() {
-  const router = useRouter()
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -33,7 +31,7 @@ export default function LoginPage() {
       return
     }
 
-    await fetch('/api/auth/set-cookie', {
+    const cookieRes = await fetch('/api/auth/set-cookie', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -42,8 +40,15 @@ export default function LoginPage() {
       }),
     })
 
-    router.push('/dashboard')
-    router.refresh()
+    if (!cookieRes.ok) {
+      setError('Erro ao iniciar sessão. Tente novamente.')
+      setLoading(false)
+      return
+    }
+
+    // Hard redirect garante que o browser envia o cookie na próxima request
+    // antes de o middleware verificar a sessão
+    window.location.href = '/dashboard'
   }
 
   return (

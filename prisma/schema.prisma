@@ -1,0 +1,233 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_URL")
+}
+
+// ─── Auth (NextAuth) ──────────────────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ─── Core ────────────────────────────────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          Role      @default(RECRUITER)
+  empresaId     String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts  Account[]
+  sessions  Session[]
+  empresa   Empresa?  @relation(fields: [empresaId], references: [id])
+  vagas     Vaga[]
+  agendas   Agenda[]
+}
+
+enum Role {
+  ADMIN
+  RECRUITER
+  VIEWER
+}
+
+model Empresa {
+  id        String   @id @default(cuid())
+  nome      String
+  cnpj      String?  @unique
+  logo      String?
+  plano     Plano    @default(STARTER)
+  ativa     Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users      User[]
+  vagas      Vaga[]
+  candidatos Candidato[]
+  clientes   Cliente[]
+}
+
+enum Plano {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+// ─── Recrutamento ─────────────────────────────────────────────────────────────
+
+model Vaga {
+  id          String      @id @default(cuid())
+  titulo      String
+  descricao   String?     @db.Text
+  requisitos  String?     @db.Text
+  salario     Float?
+  local       String?
+  tipo        TipoVaga    @default(CLT)
+  status      StatusVaga  @default(ABERTA)
+  empresaId   String
+  recrutadorId String
+  clienteId   String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  empresa     Empresa         @relation(fields: [empresaId], references: [id])
+  recrutador  User            @relation(fields: [recrutadorId], references: [id])
+  cliente     Cliente?        @relation(fields: [clienteId], references: [id])
+  candidaturas Candidatura[]
+  agendas     Agenda[]
+}
+
+enum TipoVaga {
+  CLT
+  PJ
+  ESTAGIO
+  TEMPORARIO
+  FREELANCE
+}
+
+enum StatusVaga {
+  ABERTA
+  EM_ANDAMENTO
+  ENCERRADA
+  CANCELADA
+}
+
+model Candidato {
+  id           String   @id @default(cuid())
+  nome         String
+  email        String
+  telefone     String?
+  cpf          String?
+  linkedin     String?
+  curriculo    String?
+  foto         String?
+  resumoIA     String?  @db.Text
+  scoreIA      Float?
+  empresaId    String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  empresa      Empresa       @relation(fields: [empresaId], references: [id])
+  candidaturas Candidatura[]
+  agendas      Agenda[]
+
+  @@unique([email, empresaId])
+}
+
+model Candidatura {
+  id          String            @id @default(cuid())
+  vagaId      String
+  candidatoId String
+  etapa       EtapaCandidatura  @default(TRIAGEM)
+  scoreIA     Float?
+  notaRecrutador String?       @db.Text
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  vaga        Vaga      @relation(fields: [vagaId], references: [id])
+  candidato   Candidato @relation(fields: [candidatoId], references: [id])
+
+  @@unique([vagaId, candidatoId])
+}
+
+enum EtapaCandidatura {
+  TRIAGEM
+  ENTREVISTA_RH
+  ENTREVISTA_TECNICA
+  ENTREVISTA_GESTOR
+  PROPOSTA
+  APROVADO
+  REPROVADO
+  DESISTIU
+}
+
+// ─── CRM Comercial ────────────────────────────────────────────────────────────
+
+model Cliente {
+  id        String        @id @default(cuid())
+  nome      String
+  cnpj      String?
+  contato   String?
+  email     String?
+  telefone  String?
+  status    StatusCliente @default(PROSPECT)
+  empresaId String
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  empresa Empresa @relation(fields: [empresaId], references: [id])
+  vagas   Vaga[]
+}
+
+enum StatusCliente {
+  PROSPECT
+  ATIVO
+  INATIVO
+  CONTRATO
+}
+
+// ─── Agenda ───────────────────────────────────────────────────────────────────
+
+model Agenda {
+  id          String      @id @default(cuid())
+  titulo      String
+  descricao   String?
+  dataHora    DateTime
+  tipo        TipoAgenda  @default(ENTREVISTA)
+  vagaId      String?
+  candidatoId String?
+  userId      String
+  createdAt   DateTime    @default(now())
+
+  vaga        Vaga?      @relation(fields: [vagaId], references: [id])
+  candidato   Candidato? @relation(fields: [candidatoId], references: [id])
+  user        User       @relation(fields: [userId], references: [id])
+}
+
+enum TipoAgenda {
+  ENTREVISTA
+  REUNIAO
+  FEEDBACK
+  OUTRO
+}

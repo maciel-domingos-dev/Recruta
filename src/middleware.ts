@@ -1,31 +1,23 @@
-import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const PUBLIC_PATHS = ['/login', '/candidatar']
+const PUBLIC_PATHS = ['/login', '/candidatar', '/api/']
 
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const res = NextResponse.next()
 
-  // Rotas públicas e raiz — passa sem verificar sessão
-  if (
-    pathname === '/' ||
-    pathname.startsWith('/api/') ||
-    PUBLIC_PATHS.some(p => pathname.startsWith(p))
-  ) {
-    return res
+  // Raiz e rotas públicas — passa sem verificar sessão
+  if (pathname === '/' || PUBLIC_PATHS.some(p => pathname.startsWith(p))) {
+    return NextResponse.next()
   }
 
-  // Verifica sessão via Supabase Auth (lê/atualiza cookies automaticamente)
-  const supabase = createMiddlewareClient({ req: request, res })
-  const { data: { session } } = await supabase.auth.getSession()
-
-  if (!session) {
+  // Rotas protegidas — exige cookie de sessão definido pelo /api/auth/set-cookie
+  const token = request.cookies.get('sb-access-token')?.value
+  if (!token) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
 
-  return res
+  return NextResponse.next()
 }
 
 export const config = {

@@ -1,8 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import { createClient } from '@supabase/supabase-js'
 import { Eye, EyeOff, Loader2, Users, Brain, BarChart3, CheckCircle } from 'lucide-react'
+
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+)
 
 const features = [
   { icon: Users,       text: 'Gestão completa de candidatos' },
@@ -12,8 +17,6 @@ const features = [
 ]
 
 export default function LoginPage() {
-  const supabase = createClientComponentClient()
-
   const [email,    setEmail]    = useState('')
   const [password, setPassword] = useState('')
   const [showPass, setShowPass] = useState(false)
@@ -25,14 +28,25 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
 
-    if (authError) {
+    if (authError || !data.session) {
       setError('E-mail ou senha incorretos.')
       setLoading(false)
       return
     }
 
+    // Armazena o token como cookie httpOnly para o middleware conseguir ler
+    await fetch('/api/auth/set-cookie', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        access_token:  data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      }),
+    })
+
+    // Hard redirect garante que o cookie já está no browser antes da próxima request
     window.location.href = '/dashboard'
   }
 

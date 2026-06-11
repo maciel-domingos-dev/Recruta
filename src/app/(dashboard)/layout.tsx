@@ -5,7 +5,7 @@ import Topbar from '@/components/layout/Topbar'
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = cookies()
-  const session = cookieStore.get('recruta-dev-session')
+  const session = cookieStore.get('sb-access-token')
   if (!session) redirect('/login')
 
   return (

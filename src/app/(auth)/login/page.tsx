@@ -46,8 +46,8 @@ export default function LoginPage() {
       }),
     })
 
-    // Hard redirect garante que o cookie já está no browser antes da próxima request
-    window.location.href = '/dashboard'
+    // Aguarda o cookie ser processado pelo browser antes de redirecionar
+    setTimeout(() => { window.location.href = '/dashboard' }, 500)
   }
 
   return (

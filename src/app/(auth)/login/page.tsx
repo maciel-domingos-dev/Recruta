@@ -1,13 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { Eye, EyeOff, Loader2, Users, Brain, BarChart3, CheckCircle } from 'lucide-react'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 const features = [
   { icon: Users,       text: 'Gestão completa de candidatos' },
@@ -23,31 +17,32 @@ export default function LoginPage() {
   const [loading,  setLoading]  = useState(false)
   const [error,    setError]    = useState('')
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
 
-    const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+    const res = await fetch(
+      `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/token?grant_type=password`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        },
+        body: JSON.stringify({ email, password }),
+      }
+    )
 
-    if (authError || !data.session) {
+    const data = await res.json()
+
+    if (data.access_token) {
+      document.cookie = `sb-access-token=${data.access_token}; path=/; max-age=3600`
+      window.location.href = '/dashboard'
+    } else {
       setError('E-mail ou senha incorretos.')
       setLoading(false)
-      return
     }
-
-    // Armazena o token como cookie httpOnly para o middleware conseguir ler
-    await fetch('/api/auth/set-cookie', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        access_token:  data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      }),
-    })
-
-    // Aguarda o cookie ser processado pelo browser antes de redirecionar
-    setTimeout(() => { window.location.href = '/dashboard' }, 500)
   }
 
   return (
@@ -117,7 +112,7 @@ export default function LoginPage() {
             <p className="text-gray-500 text-sm">Entre na sua conta para continuar</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleLogin} className="space-y-5">
             {/* E-mail */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">E-mail</label>

@@ -50,7 +50,7 @@ export async function POST(request: Request) {
           enable_screenshare: true,
           start_video_off: false,
           start_audio_off: false,
-          enable_recording: 'cloud',
+          // enable_recording removido: gravação é feita via MediaRecorder no navegador
         },
       }),
     })

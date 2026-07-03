@@ -816,7 +816,9 @@ export default function EntrevistasPage() {
           </div>
           <iframe
             src={videoCall.hostUrl}
-            allow="camera; microphone; fullscreen; display-capture; autoplay"
+            allow="camera; microphone; fullscreen; display-capture; autoplay; clipboard-write"
+            allowFullScreen
+            referrerPolicy="origin"
             className={`w-full border-0 transition-all duration-300 ${iframeExpanded ? 'h-[80vh]' : 'h-[520px]'}`}
             title="Videoconferência Daily.co"
           />

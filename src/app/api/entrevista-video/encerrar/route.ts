@@ -5,13 +5,13 @@ const DAILY_BASE = 'https://api.daily.co/v1'
 
 /* ─────────────────────────────────────────────
    POST /api/entrevista-video/encerrar
-   Body: { entrevistaId: string, salaNome: string }
+   Body: { entrevistaId, salaNome?, gravacaoUrl? }
    Retorna: { success: true }
 ───────────────────────────────────────────── */
 export async function POST(request: Request) {
-  let entrevistaId: string, salaNome: string | undefined
+  let entrevistaId: string, salaNome: string | undefined, gravacaoUrl: string | null | undefined
   try {
-    ;({ entrevistaId, salaNome } = await request.json())
+    ;({ entrevistaId, salaNome, gravacaoUrl } = await request.json())
   } catch {
     return NextResponse.json({ error: 'Body inválido.' }, { status: 400 })
   }
@@ -34,9 +34,18 @@ export async function POST(request: Request) {
 
   /* ── 2. Atualizar status no Supabase ── */
   const supabase = getSupabaseAdmin()
+
+  // gravacaoUrl: fornecido pelo cliente após upload MediaRecorder → Supabase Storage.
+  // Quando o plano Daily.co incluir cloud recording, adicionar aqui: video_status: 'PROCESSANDO'
+  const update: Record<string, unknown> = { status: 'ENCERRADA' }
+  if (gravacaoUrl !== undefined) {
+    update.gravacao_url    = gravacaoUrl
+    update.status_gravacao = gravacaoUrl ? 'disponivel' : null
+  }
+
   const { error: dbErr } = await supabase
     .from('entrevistas')
-    .update({ status: 'ENCERRADA' })
+    .update(update)
     .eq('id', entrevistaId)
 
   if (dbErr) {

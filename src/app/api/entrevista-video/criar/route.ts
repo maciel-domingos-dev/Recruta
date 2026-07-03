@@ -56,12 +56,17 @@ export async function POST(request: Request) {
     })
 
     const room = await roomRes.json()
+    console.log('[criar-sala] Daily.co room response:', JSON.stringify(room))
+
     if (!roomRes.ok) {
       return NextResponse.json(
         { error: room.error ?? 'Erro ao criar sala no Daily.co' },
         { status: 502 },
       )
     }
+
+    // Usa a URL retornada pelo próprio Daily.co (garante domínio correto)
+    const salaUrl = (room.url as string) ?? `https://${DAILY_DOMAIN}.daily.co/${salaNome}`
 
     /* ── 2. Token do entrevistador (is_owner = true) ── */
     const hostTokenRes = await fetch(`${DAILY_BASE}/meeting-tokens`, {
@@ -72,6 +77,14 @@ export async function POST(request: Request) {
       }),
     })
     const hostToken = await hostTokenRes.json()
+    console.log('[criar-sala] Host token response:', JSON.stringify(hostToken))
+
+    if (!hostTokenRes.ok || !hostToken.token) {
+      return NextResponse.json(
+        { error: hostToken.error ?? 'Erro ao gerar token do entrevistador' },
+        { status: 502 },
+      )
+    }
 
     /* ── 3. Token do candidato (is_owner = false) ── */
     const guestTokenRes = await fetch(`${DAILY_BASE}/meeting-tokens`, {
@@ -82,10 +95,18 @@ export async function POST(request: Request) {
       }),
     })
     const guestToken = await guestTokenRes.json()
+    console.log('[criar-sala] Guest token response:', JSON.stringify(guestToken))
 
-    const salaUrl  = `https://${DAILY_DOMAIN}.daily.co/${salaNome}`
+    if (!guestTokenRes.ok || !guestToken.token) {
+      return NextResponse.json(
+        { error: guestToken.error ?? 'Erro ao gerar token do candidato' },
+        { status: 502 },
+      )
+    }
+
     const hostUrl  = `${salaUrl}?t=${hostToken.token}`
     const guestUrl = `${salaUrl}?t=${guestToken.token}`
+    console.log('[criar-sala] URLs geradas — sala:', salaUrl, '| host:', hostUrl.slice(0, 80) + '...')
 
     /* ── 4. Atualizar entrevista no Supabase ── */
     const supabase = getSupabaseAdmin()

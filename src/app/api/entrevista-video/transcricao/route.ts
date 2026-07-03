@@ -110,7 +110,7 @@ ${texto}`,
     const supabase = getSupabaseAdmin()
     const { error: dbErr } = await supabase
       .from('entrevistas')
-      .update({ transcricao })
+      .update({ transcricao, transcricao_texto: texto })
       .eq('id', entrevistaId)
 
     if (dbErr) {
